@@ -1,100 +1,28 @@
-# CVE-FINDER Makefile
-# Supports: Standalone, AFL++, and LibFuzzer builds
+CC = gcc
+CFLAGS = -std=c11 -Wall -Wextra -O2 -D_POSIX_C_SOURCE=200809L -I./include
 
-CC = clang
-CFLAGS = -Wall -Wextra -O2 -g -std=c11
-LDFLAGS = -ldl
+TARGET = acfp_fuzzer
+DEMO_TARGET = demo_vulnerable
 
-# Source files
-CORE_SRC = cve_finder_core.c
-TARGET_SRC = fuzz_target_example.c
-CORE_HDR = cve_finder_core.h
+SRCS = src/core.c src/corpus.c src/triage.c src/main.c
+OBJS = $(SRCS:.c=.o)
 
-# Output binaries
-STANDALONE_BIN = fuzz_standalone
-AFL_BIN = fuzz_afl
-LIBFUZZER_BIN = fuzz_libfuzzer
+.PHONY: all clean test
 
-# Sanitizer flags (optional, uncomment for extra checks)
-# SANITIZE_FLAGS = -fsanitize=address,undefined -fno-omit-frame-pointer
+all: $(TARGET) $(DEMO_TARGET)
 
-.PHONY: all standalone afl libfuzzer clean test
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $(OBJS) -lm
 
-all: standalone
+src/%.o: src/%.c
+	$(CC) $(CFLAGS) -c -o $@ $<
 
-# ==============================================================================
-# Standalone Build (for testing without fuzzer engine)
-# ==============================================================================
-standalone: $(STANDALONE_BIN)
+$(DEMO_TARGET): targets/demo_vulnerable.c
+	$(CC) -g -O0 -o $@ $<
 
-$(STANDALONE_BIN): $(CORE_SRC) $(TARGET_SRC) $(CORE_HDR)
-	$(CC) $(CFLAGS) $(SANITIZE_FLAGS) \
-		-o $@ $(CORE_SRC) $(TARGET_SRC) \
-		$(LDFLAGS)
-	@echo "Built standalone binary: $(STANDALONE_BIN)"
+test: $(TARGET) $(DEMO_TARGET)
+	@echo "Build successful"
+	./$(DEMO_TARGET) || true
 
-# ==============================================================================
-# AFL++ Build (requires AFL++ installed)
-# ==============================================================================
-afl: $(AFL_BIN)
-
-$(AFL_BIN): $(CORE_SRC) $(TARGET_SRC) $(CORE_HDR)
-ifdef AFL_PATH
-	$(AFL_PATH)/afl-clang-fast $(CFLAGS) -D__AFL_HAVE_MANUAL_CONTROL \
-		-o $@ $(CORE_SRC) $(TARGET_SRC) $(LDFLAGS)
-else
-	@echo "AFL_PATH not set. Trying system afl-clang-fast..."
-	which afl-clang-fast > /dev/null || (echo "Error: afl-clang-fast not found. Install AFL++ first." && exit 1)
-	afl-clang-fast $(CFLAGS) -D__AFL_HAVE_MANUAL_CONTROL \
-		-o $@ $(CORE_SRC) $(TARGET_SRC) $(LDFLAGS)
-endif
-	@echo "Built AFL++ binary: $(AFL_BIN)"
-
-# ==============================================================================
-# LibFuzzer Build (requires Clang with libFuzzer support)
-# ==============================================================================
-libfuzzer: $(LIBFUZZER_BIN)
-
-$(LIBFUZZER_BIN): $(CORE_SRC) $(TARGET_SRC) $(CORE_HDR)
-	$(CC) $(CFLAGS) -fsanitize=fuzzer -D_LIBFUZZER_MODE \
-		-o $@ $(CORE_SRC) $(TARGET_SRC) \
-		$(LDFLAGS)
-	@echo "Built LibFuzzer binary: $(LIBFUZZER_BIN)"
-
-# ==============================================================================
-# Test Target (runs standalone with a simple input)
-# ==============================================================================
-test: standalone
-	@mkdir -p seeds output
-	@echo "Creating test seed..."
-	@echo "TESTINPUT1234567890" > seeds/test_seed.txt
-	@echo "Running standalone test..."
-	@./$(STANDALONE_BIN) < seeds/test_seed.txt && echo "Test passed!" || echo "Test failed (expected if target crashes)"
-
-# ==============================================================================
-# Clean
-# ==============================================================================
 clean:
-	rm -f $(STANDALONE_BIN) $(AFL_BIN) $(LIBFUZZER_BIN)
-	rm -rf output/ seeds/
-	@echo "Cleaned build artifacts"
-
-# ==============================================================================
-# Help
-# ==============================================================================
-help:
-	@echo "CVE-FINDER Build System"
-	@echo "======================="
-	@echo ""
-	@echo "Targets:"
-	@echo "  all       - Build standalone binary (default)"
-	@echo "  standalone- Build standalone test binary"
-	@echo "  afl       - Build for AFL++ (requires AFL++)"
-	@echo "  libfuzzer - Build for LibFuzzer (requires Clang)"
-	@echo "  test      - Run basic standalone test"
-	@echo "  clean     - Remove build artifacts"
-	@echo "  help      - Show this help message"
-	@echo ""
-	@echo "Environment Variables:"
-	@echo "  AFL_PATH  - Path to AFL++ installation (optional)"
-	@echo "  SANITIZE_FLAGS - Extra sanitizer flags (e.g., -fsanitize=address)"
+	rm -f $(TARGET) $(DEMO_TARGET) src/*.o
