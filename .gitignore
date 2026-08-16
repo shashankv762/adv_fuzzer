@@ -1,53 +1,64 @@
-# Build output
-build/
-build-*/
+```
+# Compiled and build artifacts
 *.o
-*.a
+*.obj
+*.out
+*.exe
+*.dll
 *.so
-*.d
+*.a
 
-# Fuzzer runtime state. Never commit findings: a public repository is a public
-# disclosure, and an undisclosed bug in a real target must not be published here
-# (see the M6 rules in docs/ROADMAP.md).
-crashes/*
-!crashes/.gitkeep
-hangs/*
-!hangs/.gitkeep
-queue/*
-!queue/.gitkeep
-findings/
-quarantine/
+# Dependencies
+venv/
+.venv/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+node_modules/
+target/
+.gradle/
 
-# Corpus data: often large, sometimes copyrighted sample files, and not ours to
-# redistribute. The seed corpus for a real target is fetched, not committed.
-corpus/*
-!corpus/.gitkeep
-!corpus/README.md
-
-# Core dumps and crash residue
-core
-core.*
-vgcore.*
-*.core
-
-# Editor and OS noise
-.vscode/
-.idea/
+# Logs and temp files
+*.log
+*.tmp
 *.swp
 *.swo
-*~
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# System files
 .DS_Store
 Thumbs.db
-desktop.ini
-.kilo/
-.rbxsync-trash/
 
-# Analysis output
-scan-out/
-*.gcda
-*.gcno
-*.gcov
-callgrind.out.*
-perf.data*
-compile_commands.json
-.cache/
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+```

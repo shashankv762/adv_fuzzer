@@ -414,7 +414,7 @@ static void test_no_fd_leaks(int iterations)
             continue;
         }
         mafl_exec_result_t r;
-        (void)mafl_exec_run(exec, NULL, 0, &r);
+        mafl_err_t _rr = mafl_exec_run(exec, NULL, 0, &r); if (_rr != MAFL_OK) { test_failf(__FILE__, __LINE__, "mafl_exec_run failed: %s", mafl_err_str(_rr)); return; }
         mafl_exec_destroy(exec);
     }
 
@@ -499,7 +499,7 @@ static void test_throughput_baseline(void)
     const uint64_t t0 = mafl_monotonic_ns();
     for (int i = 0; i < n; i++) {
         mafl_exec_result_t r;
-        (void)mafl_exec_run(exec, NULL, 0, &r);
+        mafl_err_t _rr = mafl_exec_run(exec, NULL, 0, &r); if (_rr != MAFL_OK) { test_failf(__FILE__, __LINE__, "mafl_exec_run failed: %s", mafl_err_str(_rr)); return; }
     }
     const uint64_t elapsed = mafl_monotonic_ns() - t0;
     mafl_exec_destroy(exec);

@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/resource.h>
+#include <sys/statvfs.h>
+#include <inttypes.h>
 
 static void audit_core_pattern(void)
 {
@@ -104,11 +106,24 @@ static void audit_nofile(void)
     }
 }
 
-void mafl_env_audit(void)
+void mafl_env_audit(const char *audit_dir)
 {
     audit_core_pattern();
     audit_cpu_governor();
     audit_sigchld_disposition();
     audit_core_rlimit();
     audit_nofile();
+
+    /* Free-space check is only performed when a directory is provided. */
+    if (audit_dir != NULL) {
+        struct statvfs st;
+        if (statvfs(audit_dir, &st) == 0) {
+            const uint64_t free_bytes = (uint64_t)st.f_bavail * (uint64_t)st.f_frsize;
+            const uint64_t FLOOR = 512u * 1024u * 1024u; /* 512 MiB */
+            if (free_bytes < FLOOR) {
+                MAFL_LOG_W("only %" PRIu64 " MiB free on %s; crashes may fail to write.",
+                           free_bytes / 1024u / 1024u, audit_dir);
+            }
+        }
+    }
 }

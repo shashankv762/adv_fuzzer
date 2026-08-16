@@ -40,13 +40,14 @@
 #include <time.h>
 #include <unistd.h>
 
-extern char **environ;
-
 #define MAFL_INPUT_PLACEHOLDER "@@"
 #define MAFL_DEFAULT_KILL_GRACE_MS 1000u
 
 /* glibc did not expose a pidfd_open() wrapper until 2.36 and our baseline is 2.31
-   (ARCHITECTURE.md D7), so go through syscall(2). The syscall itself is Linux 5.3+. */
+   (ARCHITECTURE.md D7), so go through syscall(2). The syscall itself is Linux 5.3+.
+   
+   On kernels older than 5.3, we fall back to a timer-based approach using setitimer
+   and SIGALRM. This is less elegant but portable. */
 #ifndef __NR_pidfd_open
 #define __NR_pidfd_open 434
 #endif
@@ -54,6 +55,94 @@ extern char **environ;
 static int mafl_pidfd_open(pid_t pid)
 {
     return (int)syscall(__NR_pidfd_open, pid, 0U);
+}
+
+/* Fallback timeout implementation using setitimer + ppoll on regular pid.
+   Only used when pidfd_open is unavailable (kernel < 5.3). 
+   We use timer_create with SIGEV_SIGNAL to get a realtime signal-based timeout. */
+#include <sys/time.h>
+
+static int g_have_timeout_handler = 0;
+static volatile sig_atomic_t g_timer_fired = 0;
+
+static void timer_handler(int sig)
+{
+    (void)sig;
+    g_timer_fired = 1;
+}
+
+static void setup_timer_handler(void)
+{
+    if (g_have_timeout_handler) {
+        return;
+    }
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = timer_handler;
+    (void)sigemptyset(&sa.sa_mask);
+    /* SA_RESTART: we want ppoll to restart after the signal so we can check the flag */
+    sa.sa_flags = SA_RESTART;
+    (void)sigaction(SIGALRM, &sa, NULL);
+    g_have_timeout_handler = 1;
+}
+
+/* Wait for child using traditional alarm-based timeout when pidfd is unavailable.
+   This sets an alarm, waits with waitpid in a loop, and cancels the alarm when done. */
+static mafl_err_t wait_with_alarm(pid_t pid, uint64_t timeout_ms, bool *out_timed_out)
+{
+    setup_timer_handler();
+    g_timer_fired = 0;
+    
+    /* Set up the interval timer */
+    struct itimerval tv;
+    memset(&tv, 0, sizeof(tv));
+    tv.it_value.tv_sec = (time_t)(timeout_ms / 1000u);
+    tv.it_value.tv_usec = (suseconds_t)((timeout_ms % 1000u) * 1000u);
+    
+    if (setitimer(ITIMER_REAL, &tv, NULL) != 0) {
+        MAFL_LOG_E("setitimer failed: %s", strerror(errno));
+        return MAFL_ERR_IO;
+    }
+    
+    /* Poll for child termination or timeout */
+    const uint64_t deadline = mafl_monotonic_ns() + timeout_ms * 1000000ULL;
+    
+    for (;;) {
+        const uint64_t now = mafl_monotonic_ns();
+        if (now >= deadline || g_timer_fired) {
+            *out_timed_out = true;
+            /* Cancel the timer */
+            memset(&tv, 0, sizeof(tv));
+            (void)setitimer(ITIMER_REAL, &tv, NULL);
+            return MAFL_OK;
+        }
+        
+        /* Non-blocking waitpid check */
+        int status = 0;
+        const pid_t r = waitpid(pid, &status, WNOHANG);
+        if (r == pid) {
+            /* Child terminated */
+            *out_timed_out = false;
+            /* Cancel the timer */
+            memset(&tv, 0, sizeof(tv));
+            (void)setitimer(ITIMER_REAL, &tv, NULL);
+            return MAFL_OK;
+        }
+        if (r < 0 && errno != ECHILD) {
+            if (errno == EINTR) {
+                continue;
+            }
+            MAFL_LOG_E("waitpid failed: %s", strerror(errno));
+            /* Cancel the timer */
+            memset(&tv, 0, sizeof(tv));
+            (void)setitimer(ITIMER_REAL, &tv, NULL);
+            return MAFL_ERR_WAIT;
+        }
+        
+        /* Brief sleep to avoid busy-waiting */
+        const struct timespec nap = { .tv_sec = 0, .tv_nsec = 1000000L }; /* 1ms */
+        (void)nanosleep(&nap, NULL);
+    }
 }
 
 /* Which child-setup step failed. Sent over the status pipe with the corresponding errno

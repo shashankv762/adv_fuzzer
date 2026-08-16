@@ -188,7 +188,7 @@ int main(int argc, char **argv)
         }
     }
 
-    mafl_env_audit();
+    mafl_env_audit(NULL);
 
     mafl_exec_cfg_t cfg;
     mafl_exec_cfg_init(&cfg);
