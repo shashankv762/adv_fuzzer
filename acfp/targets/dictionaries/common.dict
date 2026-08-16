@@ -1,0 +1,59 @@
+# ACFP Dictionary - Common tokens for fuzzing
+# Format: token="value"
+
+# Common strings
+token="admin"
+token="root"
+token="user"
+token="password"
+token="test"
+token="null"
+token="undefined"
+
+# Format specifiers
+token="%s"
+token="%n"
+token="%x"
+token="%p"
+token="%%%%"
+
+# Path traversal
+token="../"
+token=".."
+token="/"
+token="\\"
+
+# Special characters
+token="\x00"
+token="\xff"
+token="\x7f"
+token=";"
+token="|"
+token="&"
+
+# Numbers
+token="0"
+token="1"
+token="-1"
+token="255"
+token="256"
+token="1024"
+token="65535"
+token="65536"
+
+# SQL keywords (for parsers that might eval)
+token="SELECT"
+token="DROP"
+token="DELETE"
+
+# XML/HTML
+token="<script>"
+token="</script>"
+token="<img"
+token="javascript:"
+
+# Common file extensions
+token=".txt"
+token=".bin"
+token=".exe"
+token=".sh"

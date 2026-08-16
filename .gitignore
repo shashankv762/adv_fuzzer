@@ -1,46 +1,42 @@
 ```
-# Compiled and binary files
-*.o
-*.obj
-*.out
-acfp_fuzzer
-demo_vulnerable
+# Executables
+acfp/bin/*
+acfp/targets/demo/bin/*
+
+# Fuzzing reports and artifacts
+acfp/reports/
 
 # Build artifacts
-build/
-dist/
+*.o
+*.obj
+*.a
+*.so
+*.dll
+*.exe
 
-# Dependencies
-node_modules/
-.venv/
-venv/
-__pycache__/
-*.egg-info/
-
-# Logs and temporary files
-*.log
+# Temporary files
 *.tmp
 *.swp
 
-# Editors
-.vscode/
-.idea/
-
-# Coverage reports
-coverage/
-htmlcov/
-*.coverage
+# Logs
+*.log
 
 # Environment files
 .env
 .env.local
 *.env.*
 
-# OS specific
-.DS_Store
-Thumbs.db
+# Editors
+.vscode/
+.idea/
 
-# Fuzzing related (non-source)
-output/
-corpus/
+# Coverage and testing
+coverage/
+htmlcov/
+.coverage
+
+# Build directories
+build/
+dist/
+target/
 ```
