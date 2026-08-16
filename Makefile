@@ -35,11 +35,13 @@ CFLAGS  += -std=c11 -D_GNU_SOURCE -I$(INCDIR) $(WARNINGS) \
 CPPFLAGS += -D_FORTIFY_SOURCE=2
 LDFLAGS ?=
 
-LIB_SRCS  = $(SRCDIR)/common.c $(SRCDIR)/exec.c $(SRCDIR)/env_audit.c
+LIB_SRCS  = $(SRCDIR)/common.c $(SRCDIR)/exec.c $(SRCDIR)/env_audit.c \
+            $(SRCDIR)/coverage/cov_tracker.c $(SRCDIR)/mutators/mutator.c
 LIB_OBJS  = $(patsubst $(SRCDIR)/%.c,$(BUILD)/obj/%.o,$(LIB_SRCS))
 LIB       = $(BUILD)/libmafl.a
 
 BIN_RUN   = $(BUILD)/mafl-run
+BIN_DASHBOARD = $(BUILD)/mafl-dashboard
 
 # Test targets are built WITHOUT sanitizers and WITHOUT the hardening flags, and at -O0.
 # ASan installs its own SIGSEGV handler and exits with a normal exit code instead of dying
@@ -55,10 +57,9 @@ UNIT_BINS = $(patsubst $(TESTDIR)/unit/%.c,$(BUILD)/tests/unit_%,$(UNIT_SRCS))
 INTEG_SRCS = $(wildcard $(TESTDIR)/integration/test_*.c)
 INTEG_BINS = $(patsubst $(TESTDIR)/integration/%.c,$(BUILD)/tests/integ_%,$(INTEG_SRCS))
 
-.PHONY: all clean test test-quick asan check fmt-check lint help
-.DEFAULT_GOAL := all
+.PHONY: all clean test test-quick asan check fmt-check lint help dashboard
 
-all: $(LIB) $(BIN_RUN)
+all: $(LIB) $(BIN_RUN) $(BIN_DASHBOARD)
 
 $(BUILD)/obj/%.o: $(SRCDIR)/%.c
 	@mkdir -p $(dir $@)
@@ -71,6 +72,12 @@ $(LIB): $(LIB_OBJS)
 $(BIN_RUN): $(BUILD)/obj/main_run.o $(LIB)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $^ -o $@ $(LDFLAGS)
+
+$(BIN_DASHBOARD): $(DASHBOARD_SRCS)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $^ -o $@ $(LDFLAGS) -lpthread
+
+DASHBOARD_SRCS = dashboard/dashboard.c
 
 $(TEST_TARGET): $(TEST_TARGET_SRC)
 	@mkdir -p $(dir $@)

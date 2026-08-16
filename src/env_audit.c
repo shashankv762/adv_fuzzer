@@ -104,7 +104,7 @@ static void audit_nofile(void)
     }
 }
 
-void mafl_env_audit(void)
+void mafl_env_audit(const char *audit_dir __attribute__((unused)))
 {
     audit_core_pattern();
     audit_cpu_governor();

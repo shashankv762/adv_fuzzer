@@ -40,7 +40,6 @@
 #include <time.h>
 #include <unistd.h>
 
-extern char **environ;
 
 #define MAFL_INPUT_PLACEHOLDER "@@"
 #define MAFL_DEFAULT_KILL_GRACE_MS 1000u
