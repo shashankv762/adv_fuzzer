@@ -1,0 +1,16 @@
+# Sources are LF everywhere. The development host is Windows (RISK-19); a CRLF checkout
+# would break the shell scripts and the here-doc-style Make recipes on the Linux side.
+* text=auto eol=lf
+
+*.c   text eol=lf
+*.h   text eol=lf
+*.md  text eol=lf
+*.yml text eol=lf
+*.sh  text eol=lf
+Makefile text eol=lf
+
+# Corpus and crash artifacts are binary by definition: never normalise them, or the
+# reproducer stops reproducing.
+corpus/**  binary
+crashes/** binary
+*.bin      binary

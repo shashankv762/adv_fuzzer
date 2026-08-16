@@ -1,0 +1,67 @@
+name: ci
+
+# The development host is Windows without WSL (RISK-19), so CI is the only correctness
+# signal for this codebase. It is a hard gate, not a dashboard.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: build + test (${{ matrix.cc }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain and kernel info
+        run: |
+          ${{ matrix.cc }} --version
+          uname -a
+          # pidfd_open requires Linux 5.3+; the executor fails loudly without it, so
+          # record the version to make a CI failure on an old runner obvious.
+          echo "kernel: $(uname -r)"
+
+      - name: Build
+        run: make -j"$(nproc)" CC=${{ matrix.cc }}
+
+      - name: Lint (banned functions, handler safety, tabs)
+        run: make lint
+
+      - name: Tests
+        run: make -j"$(nproc)" CC=${{ matrix.cc }} test
+
+  sanitizers:
+    name: ASan + UBSan (${{ matrix.cc }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reduced loop counts: the leak tests run thousands of executions, and ASan makes
+      # each one much slower. The full counts run in the unsanitized job above.
+      - name: Build and test under sanitizers
+        run: make CC=${{ matrix.cc }} asan MAFL_QUICK_TESTS=1
+        env:
+          ASAN_OPTIONS: detect_leaks=1:abort_on_error=1:strict_string_checks=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+
+  static-analysis:
+    name: clang static analyzer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang-tools
+        run: sudo apt-get update && sudo apt-get install -y clang-tools
+      - name: scan-build
+        run: |
+          scan-build --status-bugs -o scan-out make -j"$(nproc)" CC=clang

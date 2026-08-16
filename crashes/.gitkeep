@@ -1,0 +1,7 @@
+Crash artifacts are written here, one directory per unique crash.
+
+NEVER COMMIT ANYTHING IN THIS DIRECTORY.
+
+A public repository is a public disclosure. Committing a reproducer for an undisclosed bug
+in a real target violates the disclosure rules in docs/ROADMAP.md and can harm the users of
+that library. .gitignore excludes everything here except this file.

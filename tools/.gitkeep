@@ -1,0 +1,10 @@
+Offline tooling lives here, from M4 onward:
+
+  mafl-tmin    input minimisation (block deletion -> alphabet -> character)
+  mafl-triage  gdb -batch post-mortem: registers, backtrace, stack-hash dedup
+  mafl-cmin    corpus minimisation via greedy set cover
+  mafl-cc      compiler wrapper that adds -fsanitize-coverage=trace-pc-guard (M2)
+
+These are separate binaries, deliberately: they run once per unique crash rather than once
+per execution, so a GDB invocation that costs a second is free here and would be ruinous
+inside the fuzzing loop (docs/ARCHITECTURE.md D6).
